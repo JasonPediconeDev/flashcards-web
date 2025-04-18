@@ -88,13 +88,13 @@
       }
       return array;
     }
-    function Quiz() {
+    // Vocabulary Quiz component
+    function VocabQuiz() {
       const totalQuestions = 5;
       const [questions] = useState(() => shuffle([...vocab]).slice(0, totalQuestions));
       const [index, setIndex] = useState(0);
       const [score, setScore] = useState(0);
       const [selected, setSelected] = useState(null);
-      // If we've gone through all questions, show completion screen
       if (index >= totalQuestions) {
         return (
           <div className="card">
@@ -113,8 +113,7 @@
         if (choice === current.english) setScore(score + 1);
         setTimeout(() => {
           setSelected(null);
-          // Move to next question (or complete)
-          setIndex(prevIndex => prevIndex + 1);
+          setIndex(prev => prev + 1);
         }, 500);
       };
       return (
@@ -133,7 +132,75 @@
         </div>
       );
     }
-    ReactDOM.render(<Quiz />, document.getElementById('root'));
+    // Morphology training data and component
+    const morphData = [
+      { lemma: 'rosa', feature: 'Accusative singular', form: 'rosam' },
+      { lemma: 'rosa', feature: 'Genitive singular', form: 'rosae' },
+      { lemma: 'puella', feature: 'Nominative plural', form: 'puellae' },
+      { lemma: 'puella', feature: 'Genitive plural', form: 'puellarum' },
+      { lemma: 'puer', feature: 'Accusative singular', form: 'puerum' },
+      { lemma: 'puer', feature: 'Genitive plural', form: 'puerorum' },
+      { lemma: 'canis', feature: 'Nominative plural', form: 'canes' },
+      { lemma: 'canis', feature: 'Genitive singular', form: 'canis' },
+    ];
+    function MorphQuiz() {
+      const totalQuestions = 5;
+      const [questions] = useState(() => shuffle([...morphData]).slice(0, totalQuestions));
+      const [index, setIndex] = useState(0);
+      const [score, setScore] = useState(0);
+      const [selected, setSelected] = useState(null);
+      if (index >= totalQuestions) {
+        return (
+          <div className="card">
+            <h2>Morphology complete!</h2>
+            <p>Your score: {score}/{totalQuestions}</p>
+          </div>
+        );
+      }
+      const current = questions[index];
+      const choices = shuffle([
+        current.form,
+        ...shuffle(morphData.filter(item => item.form !== current.form).map(item => item.form)).slice(0,3)
+      ]);
+      const handleMorphClick = choice => {
+        setSelected(choice);
+        if (choice === current.form) setScore(score + 1);
+        setTimeout(() => {
+          setSelected(null);
+          setIndex(prev => prev + 1);
+        }, 500);
+      };
+      return (
+        <div className="card">
+          <h2>What is the {current.feature} of "{current.lemma}"?</h2>
+          {choices.map(choice => (
+            <button
+              key={choice}
+              onClick={() => handleMorphClick(choice)}
+              disabled={selected !== null}
+              className={selected ? (choice === current.form ? 'correct' : (choice === selected ? 'incorrect' : '')) : ''}
+            >
+              {choice}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    // Main App component with mode selection
+    function App() {
+      const [mode, setMode] = useState(null);
+      if (!mode) {
+        return (
+          <div className="card">
+            <h1>Latin Practice</h1>
+            <button onClick={() => setMode('vocab')}>Vocabulary Quiz</button>
+            <button onClick={() => setMode('morph')}>Morphology Training</button>
+          </div>
+        );
+      }
+      return mode === 'vocab' ? <VocabQuiz /> : <MorphQuiz />;
+    }
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>
 </html>
