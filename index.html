@@ -99,6 +99,11 @@
   <div id="root"></div>
   <script type="text/babel">
     const { useState } = React;
+    // Utility for starred vocabulary persisted in localStorage
+    const loadStarredVocab = () => {
+      const s = localStorage.getItem('starredVocab');
+      return s ? JSON.parse(s) : [];
+    };
     const vocab = [
       { latin: 'puella', english: 'girl' },
       { latin: 'puer', english: 'boy' },
@@ -125,6 +130,15 @@
       const [index, setIndex] = useState(0);
       const [score, setScore] = useState(0);
       const [selected, setSelected] = useState(null);
+      // Starred vocabulary state
+      const [starred, setStarred] = useState(() => loadStarredVocab());
+      const toggleStar = latin => {
+        let newStarred;
+        if (starred.includes(latin)) newStarred = starred.filter(l => l !== latin);
+        else newStarred = [...starred, latin];
+        setStarred(newStarred);
+        localStorage.setItem('starredVocab', JSON.stringify(newStarred));
+      };
       if (index >= totalQuestions) {
         return (
           <div className="card">
@@ -148,7 +162,15 @@
       };
       return (
         <div className="card">
-          <h2>What is the English translation of "{current.latin}"?</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0 }}>What is the English translation of "{current.latin}"?</h2>
+            <button
+              onClick={() => toggleStar(current.latin)}
+              style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}
+            >
+              {starred.includes(current.latin) ? '★' : '☆'}
+            </button>
+          </div>
           {choices.map(choice => (
             <button
               key={choice}
@@ -216,6 +238,61 @@
         </div>
       );
     }
+    // Starred Vocabulary Quiz component
+    function StarredQuiz({ onBack }) {
+      const starredList = loadStarredVocab();
+      // Find starred items in vocab
+      const starredItems = vocab.filter(item => starredList.includes(item.latin));
+      if (starredItems.length === 0) {
+        return (
+          <div className="card">
+            <h2>No starred cards</h2>
+            <p>You haven't starred any vocabulary yet.</p>
+            <button onClick={onBack}>Back</button>
+          </div>
+        );
+      }
+      const totalQuestions = Math.min(starredItems.length, 5);
+      const [questions] = useState(() => shuffle([...starredItems]).slice(0, totalQuestions));
+      const [index, setIndex] = useState(0);
+      const [score, setScore] = useState(0);
+      const [selected, setSelected] = useState(null);
+      if (index >= totalQuestions) {
+        return (
+          <div className="card">
+            <h2>Review complete!</h2>
+            <p>Your score: {score}/{totalQuestions}</p>
+            <button onClick={onBack}>Back</button>
+          </div>
+        );
+      }
+      const current = questions[index];
+      const choices = shuffle([
+        current.english,
+        ...shuffle(vocab.filter(item => item.english !== current.english).map(item => item.english)).slice(0, 3)
+      ]);
+      const handleClick = choice => {
+        setSelected(choice);
+        if (choice === current.english) setScore(score + 1);
+        setTimeout(() => {
+          setSelected(null);
+          setIndex(prev => prev + 1);
+        }, 500);
+      };
+      return (
+        <div className="card">
+          <h2>Review starred: "{current.latin}"</h2>
+          {choices.map(choice => (
+            <button
+              key={choice}
+              onClick={() => handleClick(choice)}
+              disabled={selected !== null}
+              className={selected ? (choice === current.english ? 'correct' : (choice === selected ? 'incorrect' : '')) : ''}
+            >{choice}</button>
+          ))}
+        </div>
+      );
+    }
     // Matching Quiz component
     function MatchingQuiz() {
       const totalQuestions = 5;
@@ -277,18 +354,21 @@
       const [mode, setMode] = useState(null);
       if (!mode) {
         return (
-          <div className="card">
+        <div className="card">
             <h1>Latin Practice</h1>
             <button onClick={() => setMode('vocab')}>Vocabulary Quiz</button>
             <button onClick={() => setMode('morph')}>Morphology Training</button>
             <button onClick={() => setMode('match')}>Matching Exercise</button>
+            <button onClick={() => setMode('starred')}>Review Starred</button>
           </div>
         );
       }
       // Render selected mode
       if (mode === 'vocab') return <VocabQuiz />;
       if (mode === 'morph') return <MorphQuiz />;
-      return <MatchingQuiz />;
+      if (mode === 'match') return <MatchingQuiz />;
+      if (mode === 'starred') return <StarredQuiz onBack={() => setMode(null)} />;
+      return null;
     }
     ReactDOM.render(<App />, document.getElementById('root'));
   </script>
