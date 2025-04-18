@@ -63,6 +63,36 @@
       background-color: #f8d7da;
       border-color: #f5c6cb;
     }
+    /* Drag-and-drop matching styles */
+    .match-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+      text-align: left;
+    }
+    .drop-zone {
+      border: 2px dashed #ccc;
+      padding: 1rem;
+      min-height: 40px;
+      margin: 0.5rem 0;
+      background: #fff;
+    }
+    .drop-zone.filled {
+      background: #e9ecef;
+    }
+    .drag-item {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 0.5rem 0;
+      background: #fff;
+      cursor: grab;
+    }
+    .drag-item.used {
+      opacity: 0.5;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -186,6 +216,62 @@
         </div>
       );
     }
+    // Matching Quiz component
+    function MatchingQuiz() {
+      const totalQuestions = 5;
+      const [questions] = useState(() => shuffle([...vocab]).slice(0, totalQuestions));
+      const [rightItems] = useState(() => shuffle(questions.map(q => q.english)));
+      const [matches, setMatches] = useState({});
+      const handleDragStart = (e, item) => { e.dataTransfer.setData('text/plain', item); };
+      const handleDragOver = e => e.preventDefault();
+      const handleDrop = (e, idx) => {
+        e.preventDefault();
+        const item = e.dataTransfer.getData('text/plain');
+        if (!matches[idx]) {
+          setMatches(m => ({ ...m, [idx]: item }));
+        }
+      };
+      const isComplete = Object.keys(matches).length === totalQuestions;
+      if (isComplete) {
+        const score = questions.reduce((acc, q, idx) => acc + (matches[idx] === q.english ? 1 : 0), 0);
+        return (
+          <div className="card">
+            <h2>Matching complete!</h2>
+            <p>Your score: {score}/{totalQuestions}</p>
+            <button onClick={() => window.location.reload()}>Restart</button>
+          </div>
+        );
+      }
+      return (
+        <div className="card">
+          <h2>Match each Latin word to its English translation:</h2>
+          <div className="match-container">
+            <div>
+              {questions.map((q, idx) => (
+                <div key={idx}
+                  className={"drop-zone" + (matches[idx] ? ' filled' : '')}
+                  onDragOver={handleDragOver}
+                  onDrop={e => handleDrop(e, idx)}
+                >
+                  <strong>{q.latin}</strong>
+                  {matches[idx] && <div>{matches[idx]}</div>}
+                </div>
+              ))}
+            </div>
+            <div>
+              <h4>Drag items:</h4>
+              {rightItems.map((item, i) => (
+                <div key={i}
+                  draggable={!Object.values(matches).includes(item)}
+                  className={"drag-item" + (Object.values(matches).includes(item) ? ' used' : '')}
+                  onDragStart={e => handleDragStart(e, item)}
+                >{item}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
     // Main App component with mode selection
     function App() {
       const [mode, setMode] = useState(null);
@@ -195,10 +281,14 @@
             <h1>Latin Practice</h1>
             <button onClick={() => setMode('vocab')}>Vocabulary Quiz</button>
             <button onClick={() => setMode('morph')}>Morphology Training</button>
+            <button onClick={() => setMode('match')}>Matching Exercise</button>
           </div>
         );
       }
-      return mode === 'vocab' ? <VocabQuiz /> : <MorphQuiz />;
+      // Render selected mode
+      if (mode === 'vocab') return <VocabQuiz />;
+      if (mode === 'morph') return <MorphQuiz />;
+      return <MatchingQuiz />;
     }
     ReactDOM.render(<App />, document.getElementById('root'));
   </script>
